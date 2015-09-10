@@ -48,6 +48,7 @@ def _loop_helper(start, count, inc, initial_extras, further_extras):
 
 class Schedule(object):
     def __init__(self, string):
+        self.original_text = string
         # FIXME - validate here or inside parser?
         self._groups = parse(string)
     
