@@ -52,10 +52,14 @@ class Schedule(object):
         # FIXME - validate here or inside parser?
         self._groups = parse(string)
     
-    def next(self, after):
+    def next(self, after=None):
+        if after is None:
+            after = datetime.datetime.utcnow()
         return self._get_event(after, True)
 
-    def previous(self, at_or_before):
+    def previous(self, at_or_before=None):
+        if at_or_before is None:
+            at_or_before = datetime.datetime.utcnow()
         return self._get_event(at_or_before, False)
     
     def _get_event(self, ref, is_after):
