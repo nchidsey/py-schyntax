@@ -9,7 +9,8 @@ class SchyntaxParseException(SchyntaxException):
     pass
 
 
-# FIXME - InvalidScheduleException
+class InvalidScheduleException(SchyntaxException):
+    pass
 
 
 # FIXME - should take schedule,message params (well may want to change that for py a tad)

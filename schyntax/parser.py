@@ -10,7 +10,8 @@
 
 import re
 
-from schyntax.exceptions import SchyntaxParseException
+from schyntax.exceptions import SchyntaxParseException, InvalidScheduleException
+from schyntax.dateutil import get_days_in_month
 
 
 # this eats an optional trailing comma, see elsewhere for whether this is legal
@@ -162,7 +163,32 @@ class DateValue(object):
         return self.month < other.month or (self.month == other.month and self.day < other.day)
         
 
-def _compile_integer_range(argument, min, max, allow_negative=False):
+def _validate_integer(expression_type, value, min, max, allow_negative):
+    if min <= value <= max:
+        return
+    if value < 0 and allow_negative and min <= -value <= max:
+        return
+    
+    #if allow_negative: perhaps to adjust the exception message?
+    # note this appears in reference implementation: "Negative values are only allowed in dayofmonth expressions"
+    raise SchyntaxParseException("%s cannot be %d. Value must be between %d and %d." % (expression_type, value, min, max))
+
+
+def _validate_date(value):
+    # FIXME - add year support
+    
+    if value.month < 1 or value.month > 12:
+        raise SchyntaxParseException("Month %d is not a valid month. Must be between 1 and 12." % value.month)
+    
+    # (also year support here...)
+    year = 2000  # default to a leap year, if no year is specified
+    days_in_month = get_days_in_month(year, value.month)
+    
+    if value.day < 1 or value.day > days_in_month:
+        raise SchyntaxParseException("%d is not a valid day for the month specified. Must be between 1 and %d" % (value.day, days_in_month))
+
+
+def _compile_integer_range(expression_type, argument, min, max, allow_negative=False):
     '''
     Return an [integer] Range instance for the argument
     '''
@@ -186,10 +212,12 @@ def _compile_integer_range(argument, min, max, allow_negative=False):
         else:
             effective_end = argument.start
         
-        if not allow_negative:
-            if argument.start < 0 or effective_end < 0:
-                raise SchyntaxParseException("Negative values are only allowed in dayofmonth expressions")
-        # THINK - where to validate? should the values be validated against min/max and -min/-max ?
+        # Validating here, though the reference implementations do validation separately.
+        # Note the reference C# still checks for disallowed negative values in the parser phase though.
+        # Note the reference C# implementation currently raises SchyntaxParseException, why not InvalidScheduleException I wonder?
+        # And note the reference impl uses different strings
+        _validate_integer(expression_type, argument.start, min, max, allow_negative)
+        _validate_integer(expression_type, effective_end, min, max, allow_negative)
         
         return Range(argument.start, effective_end, argument.is_half_open, effective_interval)
 
@@ -216,6 +244,9 @@ def _compile_date_range(argument):
         effective_end = DateValue(12, 31)
     else:
         effective_end = argument.start
+    
+    _validate_date(argument.start)
+    _validate_date(effective_end)
     
     return Range(argument.start, effective_end, argument.is_half_open, effective_interval)
 
@@ -316,33 +347,33 @@ def _parse_group(string):
                 
             elif expression_type == 'dow':
                 if argument.is_exclude:
-                    group.days_of_week_excluded.append(_compile_integer_range(argument, 1, 7))
+                    group.days_of_week_excluded.append(_compile_integer_range(expression_type, argument, 1, 7))
                 else:
-                    group.days_of_week.append(_compile_integer_range(argument, 1, 7))
+                    group.days_of_week.append(_compile_integer_range(expression_type, argument, 1, 7))
             
             elif expression_type == 'dom':
                 if argument.is_exclude:
-                    group.days_of_month_excluded.append(_compile_integer_range(argument, 1, 31, True))
+                    group.days_of_month_excluded.append(_compile_integer_range(expression_type, argument, 1, 31, True))
                 else:
-                    group.days_of_month.append(_compile_integer_range(argument, 1, 31, True))
+                    group.days_of_month.append(_compile_integer_range(expression_type, argument, 1, 31, True))
             
             elif expression_type == 'hours':
                 if argument.is_exclude:
-                    group.hours_excluded.append(_compile_integer_range(argument, 0, 23))
+                    group.hours_excluded.append(_compile_integer_range(expression_type, argument, 0, 23))
                 else:
-                    group.hours.append(_compile_integer_range(argument, 0, 23))
+                    group.hours.append(_compile_integer_range(expression_type, argument, 0, 23))
                     
             elif expression_type == 'minutes':
                 if argument.is_exclude:
-                    group.minutes_excluded.append(_compile_integer_range(argument, 0, 59))
+                    group.minutes_excluded.append(_compile_integer_range(expression_type, argument, 0, 59))
                 else:
-                    group.minutes.append(_compile_integer_range(argument, 0, 59))
+                    group.minutes.append(_compile_integer_range(expression_type, argument, 0, 59))
                     
             elif expression_type == 'seconds':
                 if argument.is_exclude:
-                    group.seconds_excluded.append(_compile_integer_range(argument, 0, 59))
+                    group.seconds_excluded.append(_compile_integer_range(expression_type, argument, 0, 59))
                 else:
-                    group.seconds.append(_compile_integer_range(argument, 0, 59))
+                    group.seconds.append(_compile_integer_range(expression_type, argument, 0, 59))
                 
             else:
                 # should not occur
@@ -418,6 +449,10 @@ def parse(string):
         # implementation appears to do too
         if string.startswith(','):
             string = string[1:]
+
+    # TODO - ought to be in the validator, not the parser.
+    if not groups:
+        raise InvalidScheduleException("Schedule must contain at least one expression.")
 
     return groups
 

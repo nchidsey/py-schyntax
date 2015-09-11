@@ -1,23 +1,11 @@
 import datetime
-import calendar
 
 from schyntax.parser import parse
 from schyntax.exceptions import ValidTimeNotFoundException
+from schyntax.dateutil import get_days_in_month, get_days_in_previous_month
 
 
 __all__ = ['Schedule']
-
-
-def get_days_in_month(year, month):
-    return calendar.monthrange(year, month)[1]
-
-
-def get_days_in_previous_month(year, month):
-    month -= 1
-    if month == 0:
-        year -= 1
-        month = 12
-    return get_days_in_month(year, month)
 
 
 # (tweak the parameter footprint... this is gross)
