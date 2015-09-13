@@ -106,6 +106,14 @@ def test_invalid_schedule_exception(fmt):
     "minute(999999999999999999999999999999999999999)",
     "dayofweek(8)",
     
+    # bad year usage
+    "date(2015/1/1 .. 4/15)",       # mix of partial and full dates
+    "date(2015/1/1 .. 2014/1/1)",   # absolute dates out of order
+    
+    # years with no Feb 29 (2100 will not - as currently defined - be a leap year)
+    "date(2015/2/29)",
+    "date(2100/2/29)",
+    
     # otherwise bogus
     "minute 5",
     
