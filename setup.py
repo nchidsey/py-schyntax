@@ -4,7 +4,7 @@ packages = ['schyntax']
 
 setup(
     name='schyntax',
-    version='0.1',
+    version='0.2',
     description='Python port of Schyntax',
 
     author='Nick Chidsey',
