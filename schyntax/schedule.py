@@ -69,6 +69,12 @@ class Schedule(object):
         init_minute = 0 if is_after else 59
         init_second = 0 if is_after else 59
         
+        # TODO - optimize some cases like "seconds(5, !5)".
+        #        if there are no day-level includes or excludes, then if they do not 
+        #        match in the first 24 hour period, they cannot match anything.
+        #        So check all 6 day-level lists and set the loop range below to 2?
+        #        Check logic on the hypothesis further before implementing.
+        
         # "todo: make the length of the search configurable"
         for d in range(367):
             if d == 0:
@@ -175,13 +181,23 @@ class Schedule(object):
     
     def _in_date_range(self, rng, year, month, day_of_month):
         if rng.is_half_open:
-            # FIXME - missing 'year' logic
-            if rng.end.day == day_of_month and rng.end.month == month:  # and (rng.has_year_ornullcheck or rng.end.year == year)
+            if rng.end.day == day_of_month and rng.end.month == month and (rng.end.year is None or rng.end.year == year):
                 return False
         
-        # FIXME - missing more year logic
+        # check if in between start and end dates
+        if rng.start.year is not None:
+            # absolute dates with years. both will have years or neither will.
+            
+            if year < rng.start.year or year > rng.end.year:
+                return False
+            
+            if year == rng.start.year and self._compare_month_and_day(month, day_of_month, rng.start.month, rng.start.day) < 0:
+                return False
+            
+            if year == rng.end.year and self._compare_month_and_day(month, day_of_month, rng.end.month, rng.end.day) > 0:
+                return False
         
-        if rng.start > rng.end:
+        elif rng.start > rng.end:
             # split range
             # "split ranges aren't allowed to have years (it wouldn't make any sense)"
             
@@ -208,10 +224,9 @@ class Schedule(object):
             return True
         
         # "figure out the actual date of the low date so we know whether we're on the desired interval"
-        # FIXME - missing year logic
-        # if rng.have_year_or_something ...
-        #elif
-        if rng.start > rng.end and month <= rng.end.month:
+        if rng.start.year is not None:
+            start_year = rng.start.year
+        elif rng.start > rng.end and month <= rng.end.month:
             # "start date is from the previous year"
             start_year = year - 1
         else:

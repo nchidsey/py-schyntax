@@ -133,24 +133,24 @@ class Range(object):
 
 
 class DateValue(object):
-    # no year support yet   -- btw, both dates in range must have or not have a year, or it won't make sense
-    #        also split ranges (start > end) are not allowed to have years
+    year = None         # None if not specified
     month = None
     day = None
     
-    def __init__(self, month, day):
-        # note currently both month and day must be integers (not validated by type or value though)
+    def __init__(self, year, month, day):
+        self.year = year
         self.month = month
         self.day = day
 
     def __eq__(self, other):
-        # FIXME - add year support
-        return self.month == other.month and self.day == other.day
+        return self.year == other.year and self.month == other.month and self.day == other.day
         
     def __lt__(self, other):
-        # FIXME - when adding years, change this or think about whether it is used correctly from the schedule code
-        #         AT LEAST ensure both have years or both do not
-        return self.month < other.month or (self.month == other.month and self.day < other.day)
+        # not valid to compare full and partial dates
+        if (self.year is None) != (other.year is None):
+            raise Exception("cannot compare full and partial dates")
+        
+        return (self.year, self.month, self.day) < (other.year, other.month, other.day)
 
 
 class Parser(object):
@@ -330,8 +330,14 @@ class Parser(object):
         if arg.is_half_open and arg.start == arg.end:
             raise SchyntaxParseException("Start and end values of a half-open range cannot be equal.", self._input, first_token_index)
         
-        # FIXME - when adding year support, check that either both dates have, or do not have, years
-        #                                   And if both have years, that end is not before start (makes no sense that way)
+        if expression_type == EXPRESSION_TYPE_DATES and arg.end is not None:
+            # special validation to make the date range is sane
+            if arg.start.year is not None or arg.end.year is not None:
+                if arg.start.year is None or arg.end.year is None:
+                    raise SchyntaxParseException("Cannot mix full and partial dates in a date range.", self._input, first_token_index)
+                
+                if arg.start > arg.end:
+                    raise SchyntaxParseException("End date of range is before the start date.", self._input, first_token_index)
         
     def _parse_range_value(self, expression_type):
         if expression_type == EXPRESSION_TYPE_DATES:
@@ -389,11 +395,9 @@ class Parser(object):
             parts.append(int(self._expect(token.TYPE_INTEGER).string))
         
         if len(parts) == 3:
-            # FIXME - add year support
-            raise SchyntaxParseException("years not yet supported in date expressions", self._input, first_token_index)
+            date = DateValue(*parts)
         else:
-            month, day = parts
-            date = DateValue(month, day)
+            date = DateValue(None, *parts)
         
         self._validate_date(date, first_token_index)
         return date
@@ -423,13 +427,17 @@ class Parser(object):
         raise SchyntaxParseException("Value cannot be %d. Value must be between %d and %d." % (value, min, max), self._input, index)
 
     def _validate_date(self, value, index):
-        # FIXME - add year support
+        
+        if value.year is not None:
+            if value.year < 1900 or value.year > 2200:
+                raise SchyntaxParseException("Year %d is not a valid year. Must be between 1900 and 2200." % value.year, self._input, index)
         
         if value.month < 1 or value.month > 12:
             raise SchyntaxParseException("Month %d is not a valid month. Must be between 1 and 12." % value.month, self._input, index)
         
-        # (also year support here...)
-        year = 2000  # default to a leap year, if no year is specified
+        year = value.year
+        if year is None:
+            year = 2000  # default to a leap year, if no year is specified
         days_in_month = get_days_in_month(year, value.month)
         
         if value.day < 1 or value.day > days_in_month:
@@ -538,14 +546,14 @@ class Parser(object):
             effective_interval = 1
         
         if argument.is_wildcard:
-            return Range(DateValue(1, 1), DateValue(12, 31), interval=effective_interval)
+            return Range(DateValue(None, 1, 1), DateValue(None, 12, 31), interval=effective_interval)
         
         # if interval but no range, use max.
         # also convert non-range into range.
         if argument.end is not None:
             effective_end = argument.end
         elif has_interval_specified:
-            effective_end = DateValue(12, 31)
+            effective_end = DateValue(None, 12, 31)
         else:
             effective_end = argument.start
         
