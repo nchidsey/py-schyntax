@@ -172,7 +172,7 @@ class Parser(object):
         '''
         prev_token = self._next
         try:
-            self._next = self._tokenizer.next()
+            self._next = next(self._tokenizer)
         except StopIteration:
             self._next = token.Token(token.TYPE_END_OF_INPUT, "", len(self._input))
         return prev_token
