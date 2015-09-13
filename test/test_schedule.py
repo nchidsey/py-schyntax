@@ -84,7 +84,7 @@ def test_invalid_schedule_exception(fmt):
     "minute()",
     "minute(5",
     "minute(5..",
-    "minute(5..)",       # not sure about this one
+    "minute(5..)",
     "minute(5%",
     "minute(5%)",
     "minute(!",
@@ -93,10 +93,9 @@ def test_invalid_schedule_exception(fmt):
     
     
     # wrong attribute types
-# TODO - this test fails (meaning it runs without exception). not sure how reference implementation handles it.
-#    "minute(monday)",
-
+    "minute(monday)",
     "minute(4/1)",
+    "dayofweek(1..tuesday % wednesday)",
     
     # bad attribute values
     "minute(foo)",
