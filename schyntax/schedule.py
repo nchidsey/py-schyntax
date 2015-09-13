@@ -1,8 +1,8 @@
 import datetime
 
-from schyntax.parser import parse
+from schyntax.internals.parser import parse
+from schyntax.internals.dateutil import get_days_in_month, get_days_in_previous_month
 from schyntax.exceptions import ValidTimeNotFoundException
-from schyntax.dateutil import get_days_in_month, get_days_in_previous_month
 
 
 __all__ = ['Schedule']
