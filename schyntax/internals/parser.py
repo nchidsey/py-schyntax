@@ -278,8 +278,6 @@ class Parser(object):
         
         # do-while style loop to ensure at least one argument is found
         while True:
-        
-        #while not self._is_next(token.TYPE_CLOSE_PAREN):
             arg = self._parse_argument(expression_type)
             self._add_argument(group, expression_type, arg)
             
@@ -557,12 +555,3 @@ class Parser(object):
 def parse(string):
     return Parser(string).parse()
 
-
-#print Parser("minutes(* % 5) seconds(! * % 3, 3 .. 30 % 3)").parse()
-#print Parser("").parse()
-#print Parser("{").parse()
-#print Parser("foo()").parse()
-#print Parser("dates(4/15 .. 4/15)").parse()
-#print Parser("dates({").parse()
-#print parse("minute()")
-#print parse("m(30 * % 3)")

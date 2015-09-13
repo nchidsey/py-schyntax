@@ -39,5 +39,5 @@ def tokenize(input):
                     index += len(token_type.pattern)
                     break
         else:
-            # INCOMPLETE - better error message
+            # FIXME - better error message
             raise SchyntaxParseException("syntax error near: %s" % input[index:], input, index)
